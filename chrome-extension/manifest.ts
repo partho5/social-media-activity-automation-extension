@@ -41,9 +41,6 @@ const manifest = {
     default_popup: 'popup/index.html',
     default_icon: 'icon-34.png',
   },
-  chrome_url_overrides: {
-    newtab: 'new-tab/index.html',
-  },
   icons: {
     '128': 'icon-128.png',
   },
@@ -53,16 +50,16 @@ const manifest = {
       js: ['content/all.iife.js'],
     },
     {
-      matches: ['https://example.com/*'],
-      js: ['content/example.iife.js'],
+      matches: ['https://facebook.com/*', 'https://www.facebook.com/*', 'https://web.facebook.com/*'],
+      js: ['content/facebook.iife.js'],
     },
     {
       matches: ['http://*/*', 'https://*/*', '<all_urls>'],
       js: ['content-ui/all.iife.js'],
     },
     {
-      matches: ['https://example.com/*'],
-      js: ['content-ui/example.iife.js'],
+      matches: ['https://facebook.com/*', 'https://www.facebook.com/*', 'https://web.facebook.com/*'],
+      js: ['content-ui/facebook.iife.js'],
     },
     {
       matches: ['http://*/*', 'https://*/*', '<all_urls>'],
