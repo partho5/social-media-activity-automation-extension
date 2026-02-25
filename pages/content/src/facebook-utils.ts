@@ -4,6 +4,23 @@
  *   scroll to post → expand "See more" → read → comment (letter by letter) → enter → close popup → next
  */
 
+import { DELAY_RANGES, getDelayRange, getRandomDelay, addJitter, type SpeedFactor } from '@extension/env';
+
+// ─── Delay configuration ───────────────────────────────────────────────────
+/** Current speed factor (1=slow, 5=fast). Defaults to 3 (normal). */
+let currentSpeedFactor: SpeedFactor = 3;
+
+/** Set the speed factor for all subsequent delays. */
+export function setSpeedFactor(factor: SpeedFactor): void {
+  currentSpeedFactor = factor;
+  console.log(`[CEB] Speed factor set to ${factor}/5`);
+}
+
+/** Get the current speed factor. */
+export function getSpeedFactor(): SpeedFactor {
+  return currentSpeedFactor;
+}
+
 // ─── Processed post tracking ────────────────────────────────────────────────
 // A Set of unique post fingerprints so we never revisit a post, even if the DOM
 // attribute gets wiped by a React re-render.
@@ -60,16 +77,32 @@ function waitFor(
   });
 }
 
-/** Human-like delay with small random jitter (±100ms). */
-function delay(ms: number): Promise<void> {
-  const jitter = (Math.random() - 0.5) * 200; // ±100ms
-  return new Promise(r => setTimeout(r, ms + jitter));
+/**
+ * Apply a named delay from DELAY_RANGES config, scaled by current speed factor.
+ * Includes small random jitter (±10% variation).
+ */
+async function delayNamed(
+  delayKey: keyof typeof DELAY_RANGES,
+): Promise<void> {
+  const [baseMin, baseMax] = DELAY_RANGES[delayKey];
+  const [adjustedMin, adjustedMax] = getDelayRange(baseMin, baseMax, currentSpeedFactor);
+  const duration = getRandomDelay(adjustedMin, adjustedMax);
+  const jitteredDuration = addJitter(duration);
+  return new Promise(r => setTimeout(r, jitteredDuration));
 }
 
-/** Random delay in a range (ms). */
-function randomDelay(minMs: number, maxMs: number): Promise<void> {
-  const duration = minMs + Math.random() * (maxMs - minMs);
-  return delay(duration);
+/**
+ * Custom delay with min-max range, scaled by current speed factor.
+ * Includes small random jitter (±10% variation).
+ */
+async function delayCustom(
+  baseMin: number,
+  baseMax: number,
+): Promise<void> {
+  const [adjustedMin, adjustedMax] = getDelayRange(baseMin, baseMax, currentSpeedFactor);
+  const duration = getRandomDelay(adjustedMin, adjustedMax);
+  const jitteredDuration = addJitter(duration);
+  return new Promise(r => setTimeout(r, jitteredDuration));
 }
 
 /** Smooth-scroll an element into view near the top of the viewport. */
@@ -141,7 +174,7 @@ export async function expandPost(postEl: HTMLElement): Promise<string> {
   for (const btn of buttons) {
     if ((btn as HTMLElement).innerText?.trim().includes('See more')) {
       (btn as HTMLElement).click();
-      await delay(800);
+      await delayNamed('seeMoreClick');
       break;
     }
   }
@@ -154,16 +187,16 @@ export async function expandPost(postEl: HTMLElement): Promise<string> {
  */
 async function typeLetterByLetter(el: HTMLElement, text: string): Promise<void> {
   el.focus();
-  await randomDelay(100, 400); // Think time before typing
+  await delayNamed('thinkBeforeType');
 
   for (const char of text) {
     document.execCommand('insertText', false, char);
     // Natural keystroke rhythm: 40-120ms
-    await randomDelay(40, 120);
+    await delayNamed('keystroke');
 
     // Occasionally pause slightly (like thinking mid-sentence)
     if (Math.random() < 0.1) {
-      await randomDelay(200, 600);
+      await delayNamed('typingPause');
     }
   }
 }
@@ -183,14 +216,14 @@ export async function skipPost(postEl: HTMLElement): Promise<void> {
     console.log('📖 Skipping post (reading only):', fullText.substring(0, 150) + '...');
 
     // Reading time simulation: 2-5 seconds (fast reading of short post)
-    await randomDelay(2000, 5000);
+    await delayNamed('readingSkip');
 
     // Mark as processed
     markProcessed(postEl);
 
     // Gentle scroll down (150-350px)
     window.scrollBy(0, 150 + Math.random() * 200);
-    await randomDelay(1000, 2000);
+    await delayNamed('scrollPause');
   } catch (err) {
     markProcessed(postEl);
     console.error('❌ Error skipping post:', err);
@@ -242,18 +275,18 @@ export async function postFacebookComment(postEl: HTMLElement, commentText: stri
       return;
     }
 
-    await randomDelay(400, 800);
+    await delayNamed('waitForFocus');
 
     // 2 — Expand "See more" if present
     const fullText = await expandPost(postEl);
 
     // 3 — Log content (simulate reading: 2-5 seconds for actual reading)
     console.log('📝 Post Content:', fullText.substring(0, 200) + (fullText.length > 200 ? '...' : ''));
-    await randomDelay(2000, 5000);
+    await delayNamed('waitForView');
 
     // 4 — Think time before deciding to comment (20-70 seconds)
     console.log('💭 Thinking about whether to comment...');
-    await randomDelay(20000, 70000);
+    await delayNamed('thinkBeforeComment');
 
     // 5 — Find & click comment button by walking up to post card ancestor
     let postContainer: HTMLElement = postEl;
@@ -275,7 +308,7 @@ export async function postFacebookComment(postEl: HTMLElement, commentText: stri
     if (!commentBtn) throw new Error('Comment button not found');
 
     commentBtn.click();
-    await randomDelay(600, 1200); // Wait for comment box to appear
+    await delayNamed('waitForCommentBox');
 
     // 6 — Wait for comment input
     let input: HTMLElement;
@@ -301,8 +334,8 @@ export async function postFacebookComment(postEl: HTMLElement, commentText: stri
 
     // 7 — Type comment letter-by-letter (with natural pauses built-in)
     await typeLetterByLetter(input, commentText);
-    // Brief pause after typing before hitting enter (300-800ms)
-    await randomDelay(300, 800);
+    // Brief pause after typing before hitting enter
+    await delayNamed('waitForSubmitBtn');
 
     // 8 — Press Enter to submit
     input.dispatchEvent(
@@ -313,7 +346,7 @@ export async function postFacebookComment(postEl: HTMLElement, commentText: stri
         bubbles: true,
       }),
     );
-    await randomDelay(400, 1000);
+    await delayNamed('submitPause');
     console.log('✅ Comment posted:', commentText);
 
     // 9 — Mark processed + close popup
@@ -322,7 +355,7 @@ export async function postFacebookComment(postEl: HTMLElement, commentText: stri
     const closeBtn = document.querySelector('[aria-label="Close"]') as HTMLElement;
     if (closeBtn) {
       closeBtn.click();
-      await randomDelay(600, 1200);
+      await delayNamed('closePause');
     }
   } catch (err) {
     // Still mark processed on failure so we don't get stuck retrying the same post
@@ -347,5 +380,6 @@ export default {
   getFirstPostText,
   postFacebookComment,
   waitFor,
-  delay,
+  setSpeedFactor,
+  getSpeedFactor,
 };

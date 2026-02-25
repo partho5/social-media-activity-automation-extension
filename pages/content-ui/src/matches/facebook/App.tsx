@@ -1,5 +1,6 @@
 import { createFacebookLLMClient, FacebookPrompts, type FacebookCommentDecision } from '@extension/llm';
 import { botConfigStorage } from '@extension/storage';
+import { DELAY_RANGES, getDelayRange, getRandomDelay, addJitter } from '@extension/env';
 import { useEffect, useState, useRef } from 'react';
 
 interface WindowFbAutomate {
@@ -22,12 +23,21 @@ export default function App() {
 
   if (!isFacebook) return null;
 
-  /** Interruptible delay with random range (minMs to maxMs). */
-  const interruptibleDelay = async (minMs: number, maxMs: number): Promise<boolean> => {
-    const duration = minMs + Math.random() * (maxMs - minMs);
+  /**
+   * Interruptible delay with configurable range and speed factor.
+   * Returns true if interrupted (stop was clicked), false if completed.
+   */
+  const interruptibleDelay = async (
+    baseMinMs: number,
+    baseMaxMs: number,
+    speedFactor: 1 | 2 | 3 | 4 | 5 = 3,
+  ): Promise<boolean> => {
+    const [adjustedMin, adjustedMax] = getDelayRange(baseMinMs, baseMaxMs, speedFactor);
+    const duration = getRandomDelay(adjustedMin, adjustedMax);
+    const jitteredDuration = addJitter(duration);
     let elapsed = 0;
-    while (elapsed < duration && !shouldStopRef.current) {
-      await new Promise(r => setTimeout(r, Math.min(500, duration - elapsed)));
+    while (elapsed < jitteredDuration && !shouldStopRef.current) {
+      await new Promise(r => setTimeout(r, Math.min(500, jitteredDuration - elapsed)));
       elapsed += 500;
     }
     return shouldStopRef.current;
@@ -59,6 +69,12 @@ export default function App() {
         return;
       }
 
+      // Set speed factor in facebook-utils (must match WindowFbAutomate interface)
+      const fbWithSetSpeed = fb as unknown as Record<string, unknown>;
+      if (typeof fbWithSetSpeed.setSpeedFactor === 'function') {
+        (fbWithSetSpeed.setSpeedFactor as (factor: 1 | 2 | 3 | 4 | 5) => void)(botConfig.speedFactor);
+      }
+
       // Reset state from any previous run
       fb.resetAutomation?.();
 
@@ -82,7 +98,7 @@ export default function App() {
           // Scroll down a bit and wait for new posts to load
           setStatus('📜 Scrolling for more posts...');
           window.scrollBy(0, window.innerHeight * 0.7);
-          if (await interruptibleDelay(2000, 4000)) break;
+          if (await interruptibleDelay(2000, 4000, botConfig.speedFactor)) break;
           continue;
         }
 
@@ -137,11 +153,11 @@ export default function App() {
 
         // ── Natural pause between posts (5-10 seconds) ──────────────
         setStatus(`⏳ Browsing...`);
-        if (await interruptibleDelay(5000, 10000)) break;
+        if (await interruptibleDelay(5000, 10000, botConfig.speedFactor)) break;
 
         // ── Small scroll down to trigger lazy-loading ────────────────
         window.scrollBy(0, 200 + Math.random() * 300);
-        if (await interruptibleDelay(1500, 3000)) break;
+        if (await interruptibleDelay(1500, 3000, botConfig.speedFactor)) break;
       }
 
       setStatus(`✅ Done! Commented: ${totalCommented}, Skipped: ${totalSkipped}`);
