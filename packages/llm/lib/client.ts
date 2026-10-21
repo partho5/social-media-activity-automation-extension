@@ -28,11 +28,12 @@ export class LLMClient {
    * Useful for one-off calls or dynamic prompts built at runtime.
    */
   async runTemplate<T>(template: PromptTemplate<T>, variables: PromptVariables = {}): Promise<T> {
+    const systemMessage = PromptRegistry.interpolate(template.systemPrompt, variables);
     const userMessage = PromptRegistry.interpolate(template.userPromptTemplate, variables);
 
     const response = await this.provider.complete({
       messages: [
-        { role: 'system', content: template.systemPrompt },
+        { role: 'system', content: systemMessage },
         { role: 'user', content: userMessage },
       ],
       model: template.model,
@@ -58,7 +59,6 @@ export class LLMClient {
 
 // ─── Platform factory helpers ─────────────────────────────────────────────────
 
-import { FacebookPrompts } from './prompts/platforms/facebook.js';
 import { LinkedInPrompts } from './prompts/platforms/linkedin.js';
 import { OpenAIProvider } from './providers/openai.js';
 import type { LLMProviderConfig } from './providers/types.js';
@@ -71,11 +71,13 @@ function resolveConfig(config?: Partial<LLMProviderConfig>): LLMProviderConfig {
   return { ...config, apiKey };
 }
 
-/** Pre-loaded with all Facebook prompts. Falls back to OPENAI_API_KEY env var. */
+/**
+ * Facebook LLM client — prompts are loaded from storage at call time via runTemplate(),
+ * so no registry pre-population is needed.
+ */
 export function createFacebookLLMClient(config?: Partial<LLMProviderConfig>): LLMClient {
   const provider = new OpenAIProvider(resolveConfig(config));
-  const registry = new PromptRegistry().registerAll(FacebookPrompts.all);
-  return new LLMClient(provider, registry);
+  return new LLMClient(provider, new PromptRegistry());
 }
 
 /** Pre-loaded with all LinkedIn prompts. Falls back to OPENAI_API_KEY env var. */

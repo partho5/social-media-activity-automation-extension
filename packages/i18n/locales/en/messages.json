@@ -1,11 +1,11 @@
 {
   "extensionDescription": {
     "description": "Extension description",
-    "message": "Chrome extension boilerplate developed with Vite, React and Typescript"
+    "message": "Automate your social media engagement with AI-powered, human-like comments and activity on Facebook."
   },
   "extensionName": {
     "description": "Extension name",
-    "message": "Chrome extension boilerplate"
+    "message": "Social Engage — AI Social Media Automation"
   },
   "toggleTheme": {
     "message": "Toggle theme"

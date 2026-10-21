@@ -21,12 +21,13 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@extension/shared": "workspace:*",
-    "@extension/ui": "workspace:*",
-    "@extension/i18n": "workspace:*",
+    "@extension/api-client": "workspace:*",
     "@extension/env": "workspace:*",
+    "@extension/i18n": "workspace:*",
     "@extension/llm": "workspace:*",
-    "@extension/storage": "workspace:*"
+    "@extension/shared": "workspace:*",
+    "@extension/storage": "workspace:*",
+    "@extension/ui": "workspace:*"
   },
   "devDependencies": {
     "@extension/hmr": "workspace:*",

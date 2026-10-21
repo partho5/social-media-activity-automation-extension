@@ -20,10 +20,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@extension/api-client": "workspace:*",
+    "@extension/i18n": "workspace:*",
     "@extension/shared": "workspace:*",
     "@extension/storage": "workspace:*",
-    "@extension/ui": "workspace:*",
-    "@extension/i18n": "workspace:*"
+    "@extension/ui": "workspace:*"
   },
   "devDependencies": {
     "@extension/tailwindcss-config": "workspace:*",

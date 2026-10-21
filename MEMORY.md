@@ -31,21 +31,35 @@ Each platform will have separate, custom functionalities.
 - `getAllPosts` → returns DOM elements (for automation loop)
 - `getAllPostTexts` → returns strings (for console testing)
 
-### Facebook Bot UI (`pages/content-ui/src/matches/facebook/App.tsx`) ✅ WIRED TO LLM
+### Facebook Bot UI (`pages/content-ui/src/matches/facebook/App.tsx`) ✅ WIRED TO LLM + SPEED FACTOR
 - Fixed-position panel (bottom-right) only visible on facebook.com
 - Shows current status in real time
 - **Start button** runs the full automation loop:
-  1. Reads `botConfigStorage` (persona, language, tone, topic)
+  1. Reads `botConfigStorage` (persona, language, tone, topic, **speedFactor**)
   2. Creates `LLMClient` from `process.env.CEB_OPENAI_API_KEY` (baked at build time)
-  3. For each post: calls `llm.run(FacebookPrompts.commentDecision, { postContent, persona, language })`
-  4. Logs decision + reason: `🤖 LLM decision — shouldComment: true/false | reason: ...`
-  5. Posts LLM-generated comments or skips based on decision
-  6. Natural 5-8 second interruptible delays between posts
-  7. Scroll down to load more posts
-  8. Repeat until stopped or no posts found
+  3. Sets speedFactor in facebook-utils (1=slow, 5=fast)
+  4. For each post: calls `llm.run(FacebookPrompts.commentDecision, { postContent, persona, language })`
+  5. Logs decision + reason: `🤖 LLM decision — shouldComment: true/false | reason: ...`
+  6. Posts LLM-generated comments or skips based on decision
+  7. Natural delays between posts **(scaled by speedFactor)**
+  8. Scroll down to load more posts
+  9. Repeat until stopped or no posts found
 - **Stop button** - always enabled, interrupts within 500ms (chunked delays)
 - **Error handling**: If LLM fails (missing API key, network error, invalid response) → skip post and continue
 - **UI status**: Shows `🤖 Asking LLM...` while awaiting, then `💬` (commented) or `⊘ skipped — {reason}`
+
+### Delay Configuration System (`packages/env/lib/delay-config.ts`) ✅ CENTRALIZED
+- Single source of truth for all delay ranges
+- 14 named delay categories (keystroke, thinking, reading, scrolling, etc.)
+- **Speed factor (1-5)** multiplies ALL delays:
+  - 1 (Slow): 2.0x multiplier - cautious activity, anti-bot measures
+  - 2 (Moderate): 1.5x multiplier
+  - 3 (Normal): 1.0x multiplier - default balanced
+  - 4 (Fast): 0.65x multiplier
+  - 5 (Very Fast): 0.4x multiplier - aggressive, higher detection risk
+- Stored in `botConfigStorage.speedFactor` (persists across sessions)
+- Set automatically at automation start
+- All facebook-utils delays use `delayNamed()` - no hardcoded values
 
 ---
 

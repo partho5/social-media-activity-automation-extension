@@ -1,2 +1,2 @@
 export * from './example-theme-storage.js';
-export * from './bot-config-storage.js';
+export * from './platforms/index.js';

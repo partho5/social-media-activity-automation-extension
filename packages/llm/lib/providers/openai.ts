@@ -1,6 +1,6 @@
 import type { LLMProvider, LLMProviderConfig, LLMRequest, LLMResponse } from './types.js';
 
-const OPENAI_DEFAULT_MODEL = 'gpt-4o-mini';
+const OPENAI_DEFAULT_MODEL = 'gpt-5-nano';
 const OPENAI_BASE_URL = 'https://api.openai.com/v1';
 
 export class OpenAIProvider implements LLMProvider {
@@ -15,19 +15,25 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   async complete(request: LLMRequest): Promise<LLMResponse> {
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: request.model ?? this.defaultModel,
-        messages: request.messages,
-        temperature: request.temperature ?? 0.7,
-        max_tokens: request.maxTokens ?? 500,
-      }),
-    });
+    const url = `${this.baseUrl}/chat/completions`;
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: request.model ?? this.defaultModel,
+          messages: request.messages,
+          max_completion_tokens: request.maxTokens ?? 2000,
+        }),
+      });
+    } catch (fetchErr) {
+      const cause = fetchErr instanceof Error ? fetchErr : new Error(String(fetchErr));
+      throw new Error(`Network error reaching ${url}: ${cause.message}`, { cause });
+    }
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => null);

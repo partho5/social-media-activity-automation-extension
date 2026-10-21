@@ -30,10 +30,16 @@ const configs = Object.entries(getContentScriptEntries(matchesDir)).map(([name, 
   }),
 );
 
-const builds = configs.map(async config => {
+// Build sequentially to avoid race conditions with same outDir
+for (let index = 0; index < configs.length; index++) {
+  const config = configs[index];
   //@ts-expect-error This is hidden property into vite's resolveConfig()
   config.configFile = false;
-  await build(config);
-});
 
-await Promise.all(builds);
+  // Disable emptyOutDir for builds after the first to preserve previously built files
+  if (index > 0 && config.build) {
+    config.build.emptyOutDir = false;
+  }
+
+  await build(config);
+}

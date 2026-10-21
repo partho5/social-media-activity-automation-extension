@@ -45,8 +45,7 @@ Respond with valid JSON only — no markdown fences, no prose:
 Your persona: {{persona}}
 Write in: {{language}}`,
 
-  temperature: 0.7,
-  maxTokens: 200,
+  maxTokens: 2000,
   parseResponse: parseDecisionJson,
 };
 

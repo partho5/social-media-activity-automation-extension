@@ -4,6 +4,8 @@ interface ICebEnv {
   readonly CEB_EXAMPLE: string;
   readonly CEB_DEV_LOCALE: string;
   readonly CEB_OPENAI_API_KEY: string;
+  readonly CEB_CLERK_PUBLISHABLE_KEY: string;
+  readonly CEB_BACKEND_URL: string;
 }
 
 interface ICebCliEnv {
